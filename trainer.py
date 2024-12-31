@@ -31,7 +31,8 @@ def mlp_train(
 
     #------ Building graph picture of model
     writer = SummaryWriter()
-    writer.add_graph(MLP(), torch.zeros((1, image_width * image_height * 3), device=device))
+    model = MLP().to(device)  # Move the model to the same device as the tensor
+    writer.add_graph(model, torch.zeros((1, image_width * image_height * 3), device=device))
     writer.flush()
     #--------------------------------------
 
