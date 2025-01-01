@@ -57,14 +57,29 @@ def mlp_train(
         # Validation
         mlp_model.eval()
         val_loss = 0.0
+        correct_predictions = 0  # Initialize to 0
+        total_samples = 0  # Initialize to 0
         for i, (images, segmentations, labels) in enumerate(val_loader):
             images, segmentations, labels = images.to(device), segmentations.to(device), labels.to(device)
             outputs = mlp_model(images)
             loss = loss_fn(outputs, labels)
             val_loss += loss.item()
-        val_loss /= len(val_loader)
 
-        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+            # Calculate accuracy
+            _, predicted = torch.max(outputs, 1)  # Get the predicted class
+            correct_predictions += (predicted == labels).sum().item()
+            total_samples += labels.size(0)
+        val_loss /= len(val_loader)
+        val_accuracy = correct_predictions / total_samples * 100  # Accuracy as a percentage
+
+        # Log metrics to TensorBoard
+        writer.add_scalar("Loss/Train", train_loss, epoch + 1)
+        writer.add_scalar("Loss/Validation", val_loss, epoch + 1)
+        writer.add_scalar("Accuracy/Validation", val_accuracy, epoch + 1)
+
+        writer.flush()
+
+        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
 
 
 if __name__ == "__main__":
