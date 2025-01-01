@@ -20,7 +20,7 @@ class MLP(nn.Module):
         
     def __init__(
         self,
-        hidden_dim: int = 128,
+        hidden_dim: int = 256,
     ):
         """
         Args:
