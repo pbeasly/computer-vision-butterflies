@@ -101,6 +101,13 @@ def cnn_trainer(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
+    #------ Building graph picture of model
+    writer = SummaryWriter()
+    model = CNNClassifier().to(device)  # Move the model to the same device as the tensor
+    writer.add_graph(model, torch.zeros((1, image_width * image_height * 3), device=device))
+    writer.flush()
+    #--------------------------------------
+
     cnn_model = CNNClassifier().to(device)
     optimizer = torch.optim.AdamW(cnn_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
