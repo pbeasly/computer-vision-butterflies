@@ -103,9 +103,9 @@ def cnn_trainer(
 
     #------ Building graph picture of model
     writer = SummaryWriter()
-    model = CNNClassifier().to(device)  # Move the model to the same device as the tensor
-    writer.add_graph(model, torch.zeros((1, image_width * image_height * 3), device=device))
-    writer.flush()
+    # model = CNNClassifier().to(device)  # Move the model to the same device as the tensor
+    # writer.add_graph(model, torch.zeros((1, image_width * image_height * 3), device=device))
+    # writer.flush()
     #--------------------------------------
 
     cnn_model = CNNClassifier().to(device)
@@ -143,6 +143,13 @@ def cnn_trainer(
             total_samples += labels.size(0)
         val_loss /= len(val_loader)
         val_accuracy = correct_predictions / total_samples * 100  # Accuracy as a percentage
+
+        # Log metrics to TensorBoard
+        writer.add_scalar("Loss/Train", train_loss, epoch + 1)
+        writer.add_scalar("Loss/Validation", val_loss, epoch + 1)
+        writer.add_scalar("Accuracy/Validation", val_accuracy, epoch + 1)
+
+        writer.flush()
 
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
 
