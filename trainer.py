@@ -78,10 +78,9 @@ def mlp_train(
         writer.add_scalar("Accuracy/Validation", val_accuracy, epoch + 1)
 
         writer.flush()
-
-        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
-
-
+        if (epoch + 1) % 5 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
+            
 # CNN model training for classification
 def cnn_trainer(
     batch_size=128, 
@@ -148,7 +147,8 @@ def cnn_trainer(
 
         writer.flush()
 
-        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
+        if (epoch + 1) % 5 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
 
 
 if __name__ == "__main__":
