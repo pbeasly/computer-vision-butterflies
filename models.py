@@ -148,6 +148,7 @@ class UNET(torch.nn.Module):
             self.norm = torch.nn.BatchNorm2d(out_channels)
             self.relu = torch.nn.ReLU()
 
+        # check that down and up blocks are properly symmetrical
         def forward(self, x):
             x = self.relu(self.conv(x))
             return x
@@ -176,7 +177,6 @@ class UNET(torch.nn.Module):
         Up1     (b, 16, h / 2, w / 2)    after up-conv layer
         Up2     (b, 16,     h,     w)    after up-conv layer
         Logits  (b,  n,     h,     w)    output logits, where n = num_class
-        Depth   (b,  1,     h,     w)    output depth, single channel
         """
         # --------------- Create the layers
 
@@ -232,8 +232,6 @@ class UNET(torch.nn.Module):
 
         # Output heads
         logits = self.logits(x8)  # (B, num_classes, H, W)
-
-
 
         return logits
 
