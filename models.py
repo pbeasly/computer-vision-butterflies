@@ -23,11 +23,9 @@ class MLP(nn.Module):
         hidden_dim: int = 256,
     ):
         """
-        Args:
-            image dimensions (int): image_height, image_width
+        Args: Image dimensions (int): image_height, image_width
         
-        Returns:
-            Classify the image into 10 classes
+        Returns: Classify the image into 10 classes
         """
         super().__init__()
         layers = []
@@ -47,7 +45,7 @@ class MLP(nn.Module):
 
 class CNNClassifier(nn.Module):
 
-    #----- add the Block class here
+    #----- Begin Block Class
     class Block(torch.nn.Module):
         def __init__(self, in_channels, out_channels, stride):
             super().__init__()
@@ -106,11 +104,8 @@ class CNNClassifier(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Args:
-            x: tensor (b, 3, h, w) image
-
-        Returns:
-            tensor (b, num_classes) logits
+        Args:  x: tensor (b, 3, h, w) image
+        Returns:  tensor (b, num_classes) logits
         """
         # optional: normalizes the input
         # z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
@@ -123,6 +118,147 @@ class CNNClassifier(nn.Module):
         return logits
     
 
+
+class UNET(torch.nn.Module):
+    #----- Down_Block class here
+    class Down_Block(torch.nn.Module):
+        # kernel_size = 3, stride = 2, padding = 1
+        # Reduce the spatial dimensions by half each time
+        def __init__(self, in_channels, out_channels):
+            super().__init__()
+            self.conv1 = torch.nn.Conv2d(in_channels, out_channels, 3, 2, 1)
+            self.conv2 = torch.nn.Conv2d(out_channels, out_channels, 3, 1, 1)
+            # self.norm = torch.nn.BatchNorm2d(out_channels)
+            self.relu = torch.nn.ReLU()
+
+            self.network = torch.nn.Sequential(self.conv1, self.relu, self.conv2, self.relu)
+
+        def forward(self, x):
+            # TODO: add the norm layer later
+            x = self.network(x)
+            return x
+        
+    #----- add the Up_Block class here
+    class Up_Block(torch.nn.Module):
+        # kernel_size = 3, stride = 2, padding = 1
+        # Double the spatial dimensions each time
+        def __init__(self, in_channels, out_channels):
+            super().__init__()
+            self.conv = torch.nn.ConvTranspose2d(in_channels, out_channels, 3, 2, 1, output_padding=1)
+            self.norm = torch.nn.BatchNorm2d(out_channels)
+            self.relu = torch.nn.ReLU()
+
+        def forward(self, x):
+            x = self.relu(self.conv(x))
+            return x
+        
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        num_classes: int = 3,
+    ):
+        """
+        A model that performs segmentation training
+
+        Args:
+            in_channels: int, number of input channels
+            num_classes: int
+        """
+        super().__init__()
+
+        self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
+        self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
+
+        """Input   (b,  3,     h,     w)    input image
+        Down1   (b, 16, h / 2, w / 2)    after strided conv layer
+        Down2   (b, 32, h / 4, h / 4)    after strided conv layer
+        Up1     (b, 16, h / 2, w / 2)    after up-conv layer
+        Up2     (b, 16,     h,     w)    after up-conv layer
+        Logits  (b,  n,     h,     w)    output logits, where n = num_class
+        Depth   (b,  1,     h,     w)    output depth, single channel
+        """
+        # --------------- Create the layers
+
+        self.down1 = self.Down_Block(in_channels, 16)
+        self.down2 = self.Down_Block(16, 32)
+        self.down3 = self.Down_Block(32, 64)
+        self.down4 = self.Down_Block(64, 128)
+
+        self.up1 = self.Up_Block(128, 64)
+        self.up2 = self.Up_Block(64, 32)
+        self.up3 = self.Up_Block(32, 16)
+        self.up4 = self.Up_Block(16, 16)
+        
+        #segmenation and depth heads 
+        self.logits = torch.nn.Conv2d(16, num_classes, kernel_size=1)
+
+        self.network = torch.nn.Sequential(self.down1, self.down2, self.up1, self.up2)
+
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Used in training, takes an image and returns raw logits.
+        This is what the loss functions use as input.
+
+        Args:
+            x (torch.FloatTensor): image with shape (b, 3, h, w) and vals in [0, 1]
+
+        Returns:
+            tuple of (torch.FloatTensor, torch.FloatTensor):
+                - logits (b, num_classes, h, w)
+                - depth (b, h, w)
+        """
+        # ------------------------------
+        """
+         # optional: normalizes the input
+        z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
+        # TODO: replace with actual forward pass
+        logits = torch.randn(x.size(0), 3, x.size(2), x.size(3))
+        raw_depth = torch.rand(x.size(0), x.size(2), x.size(3))
+        """
+
+        x1 = self.down1(x)  # (B, 16, H/2, W/2)
+        x2 = self.down2(x1)  # (B, 32, H/4, W/4)
+        x3 = self.down3(x2)  # (B, 64, H/8, W/8)
+        x4 = self.down4(x3)  # (B, 64, H/16, W/16)
+
+        # Decoder
+  
+        x5 = self.up1(x4)  # (B, 16, H/8, W/8)
+        x6 = self.up2(x5)  # (B, 16, H, W)
+        x7 = self.up3(x6)  # (B, 16, H, W)
+        x8 = self.up4(x7)  # (B, 16, H, W)
+
+        # Output heads
+        logits = self.logits(x8)  # (B, num_classes, H, W)
+
+
+
+        return logits
+
+    def predict(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Used for inference, takes an image and returns class labels and normalized depth.
+        This is what the metrics use as input (this is what the grader will use!).
+
+        Args:
+            x (torch.FloatTensor): image with shape (b, 3, h, w) and vals in [0, 1]
+
+        Returns:
+            tuple of (torch.LongTensor, torch.FloatTensor):
+                - pred: class labels {0, 1, 2} with shape (b, h, w)
+                - depth: normalized depth [0, 1] with shape (b, h, w)
+        """
+        logits, raw_depth = self(x)
+        pred = logits.argmax(dim=1)
+
+        # Optional additional post-processing for depth only if needed
+        depth = raw_depth
+        # depth = depth.squeeze(dim=1)
+
+        return pred, depth
+    
 
 """ This is a simpler model that can be used as a reference for MLP"""
 # Create a simple perceptron model
